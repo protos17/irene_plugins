@@ -1,3 +1,6 @@
+# Подредактированный плагин управления радио по названию на основе https://github.com/Mmm-Vvv/Romeo_plugins
+# author: Danil Chaparov
+
 import os
 import time
 
@@ -61,19 +64,19 @@ def RadioPlay(core:VACore, phrase: str): # в phrase находится оста
     core.play_voice_assistant_speech("включаю")
     player.volume = options["radioVolume"]
     if "коммерсант" in phrase:
-        options["radioPlay"] = 0
+        options["radioPlay"] = next((i for i, item in enumerate(options["radioStations"]) if "kommersant" in item), None)
     if "наш" in phrase:
-        options["radioPlay"] = 1
+        options["radioPlay"] = next((i for i, item in enumerate(options["radioStations"]) if "nashe" in item), None)
     if "орфе" in phrase:
-        options["radioPlay"] = 2
+        options["radioPlay"] = next((i for i, item in enumerate(options["radioStations"]) if "orfey" in item), None)
     if "русск" in phrase:
-        options["radioPlay"] = 3
+        options["radioPlay"] = next((i for i, item in enumerate(options["radioStations"]) if "rusradio" in item), None)
     if "европ" in phrase:
-        options["radioPlay"] = 4
+        options["radioPlay"] = next((i for i, item in enumerate(options["radioStations"]) if "europaplus" in item), None)
     if "макс" in phrase:
-        options["radioPlay"] = 5
+        options["radioPlay"] = next((i for i, item in enumerate(options["radioStations"]) if "maximum" in item), None)
     if "шоколад" in phrase:
-        options["radioPlay"] = 6
+        options["radioPlay"] = next((i for i, item in enumerate(options["radioStations"]) if "choco" in item), None)
     player.play(options["radioStations"][options["radioPlay"]])
     while player.volume <= options["radioVolume"]:
         player.volume +=1
