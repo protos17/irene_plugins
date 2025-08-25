@@ -24,12 +24,22 @@ class MusicPlayer:
         self.is_playing: bool = False
         self.volume: int = 50
         self.is_shuffled: bool = False
+        self.shuffle_mapping: list = []  # Mapping для перемешанного порядка
         self.player.audio_set_volume(self.volume)
         
         # Создаем папку для музыки если её нет
         self.music_folder.mkdir(exist_ok=True, parents=True)
         
         self._load_playlist()
+        
+        # Устанавливаем обработчик окончания трека
+        event_manager = self.player.event_manager()
+        event_manager.event_attach(vlc.EventType.MediaPlayerEndReached, self._on_track_end)
+    
+    def _on_track_end(self, event):
+        """Обработчик окончания трека"""
+        if self.is_playing:
+            self.next_track()
     
     def _load_playlist(self):
         """Загружает список музыкальных файлов из папки"""
@@ -41,30 +51,44 @@ class MusicPlayer:
                 if file.suffix.lower() in supported_formats and file.is_file():
                     self.original_playlist.append(str(file.absolute()))
         
+        # Сортируем оригинальный плейлист для consistency
+        self.original_playlist.sort()
+        
         # Копируем оригинальный плейлист в рабочий
         self.playlist = self.original_playlist.copy()
-        print(f"Загружено {len(self.playlist)} треков в плейлист")
+        self.shuffle_mapping = list(range(len(self.playlist)))
     
     def shuffle_playlist(self):
-        """Перемешивает плейлист"""
+        """Перемешивает плейлист с сохранением mapping"""
         if not self.playlist:
             return False
         
-        # Сохраняем текущий трек если он играет
-        current_track = None
+        # Создаем mapping: оригинальный индекс -> перемешанный индекс
+        original_indices = list(range(len(self.original_playlist)))
+        random.shuffle(original_indices)
+        
+        # Создаем новый перемешанный плейлист
+        shuffled_playlist = []
+        for orig_idx in original_indices:
+            shuffled_playlist.append(self.original_playlist[orig_idx])
+        
+        # Обновляем текущий индекс если трек играет
+        current_track_path = None
         if self.current_track_index >= 0:
-            current_track = self.playlist[self.current_track_index]
+            current_track_path = self.playlist[self.current_track_index]
         
-        # Перемешиваем плейлист
-        random.shuffle(self.playlist)
+        self.playlist = shuffled_playlist
         self.is_shuffled = True
+        self.shuffle_mapping = original_indices  # Сохраняем mapping
         
-        # Обновляем индекс текущего трека если он был
-        if current_track:
+        # Находим новый индекс текущего трека
+        if current_track_path:
             try:
-                self.current_track_index = self.playlist.index(current_track)
+                self.current_track_index = self.playlist.index(current_track_path)
             except ValueError:
                 self.current_track_index = -1
+        else:
+            self.current_track_index = -1
         
         return True
     
@@ -74,23 +98,71 @@ class MusicPlayer:
             return False
         
         # Сохраняем текущий трек если он играет
-        current_track = None
+        current_track_path = None
         if self.current_track_index >= 0:
-            current_track = self.playlist[self.current_track_index]
+            current_track_path = self.playlist[self.current_track_index]
         
         # Восстанавливаем оригинальный порядок
         self.playlist = self.original_playlist.copy()
         self.is_shuffled = False
+        self.shuffle_mapping = list(range(len(self.playlist)))
         
         # Обновляем индекс текущего трека если он был
-        if current_track:
+        if current_track_path:
             try:
-                self.current_track_index = self.playlist.index(current_track)
+                self.current_track_index = self.playlist.index(current_track_path)
             except ValueError:
                 self.current_track_index = -1
+        else:
+            self.current_track_index = -1
         
-        print("Плейлист восстановлен в оригинальном порядке")
         return True
+    
+    def next_track(self) -> bool:
+        """Следующий трек"""
+        if not self.playlist:
+            return False
+        
+        next_index = (self.current_track_index + 1) % len(self.playlist)
+        return self.play(next_index)
+    
+    def previous_track(self) -> bool:
+        """Предыдущий трек"""
+        if not self.playlist:
+            return False
+        
+        prev_index = (self.current_track_index - 1) % len(self.playlist)
+        return self.play(prev_index)
+    
+    def play(self, track_index: int = None) -> bool:
+        """Воспроизведение трека"""
+        if not self.playlist:
+            return False
+        
+        if track_index is None:
+            if self.current_track_index == -1:
+                track_index = 0
+            else:
+                track_index = self.current_track_index
+        else:
+            if track_index < 0 or track_index >= len(self.playlist):
+                return False
+        
+        try:
+            # Останавливаем текущее воспроизведение
+            self.player.stop()
+            
+            media = self.instance.media_new(self.playlist[track_index])
+            self.player.set_media(media)
+            self.player.play()
+            self.current_track_index = track_index
+            self.is_playing = True
+            
+            track_name = Path(self.playlist[track_index]).name
+            readable_name = self.get_readable_track_name(track_name)
+            return True
+        except Exception as e:
+            return False
     
     def latin_to_cyrillic(self, text: str) -> str:
         """Преобразует латинские символы в кириллические для озвучивания"""
@@ -265,7 +337,7 @@ class MusicPlayer:
 def start(core: VACore):
     manifest = {
         "name": "Музыкальный плеер VLC",
-        "version": "1.1",
+        "version": "1.2",
         "require_online": False,
         "description": "Управление локальной музыкой через VLC player. "
                        "Воспроизведение, пауза, переключение треков, регулировка громкости, перемешивание.",
