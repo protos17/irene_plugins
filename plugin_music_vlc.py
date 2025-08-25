@@ -1,5 +1,5 @@
 # Плагин управления музыкой через VLC player
-# author: Danil Chaparov
+# author: protos17
 # необходимо установить: pip install python-vlc
 
 import os

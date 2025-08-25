@@ -1,5 +1,5 @@
 # Подредактированный плагин управления радио по названию на основе https://github.com/Mmm-Vvv/Romeo_plugins
-# author: Danil Chaparov
+# author: protos17
 
 import os
 import time
