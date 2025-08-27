@@ -77,6 +77,7 @@ def RadioPlay(core:VACore, phrase: str): # в phrase находится оста
         options["radioPlay"] = next((i for i, item in enumerate(options["radioStations"]) if "maximum" in item), None)
     if "шоколад" in phrase:
         options["radioPlay"] = next((i for i, item in enumerate(options["radioStations"]) if "choco" in item), None)
+    core.save_plugin_options(modname,options)
     player.play(options["radioStations"][options["radioPlay"]])
     while player.volume <= options["radioVolume"]:
         player.volume +=1
