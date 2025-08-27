@@ -18,151 +18,27 @@ class MusicPlayer:
         
         self.instance = vlc.Instance('--no-xlib --quiet')
         self.player = self.instance.media_player_new()
-        self.original_playlist: list = []
         self.playlist: list = []
         self.current_track_index: int = -1
         self.is_playing: bool = False
         self.volume: int = 50
         self.is_shuffled: bool = False
-        self.shuffle_mapping: list = []  # Mapping для перемешанного порядка
         self.player.audio_set_volume(self.volume)
         
         # Создаем папку для музыки если её нет
         self.music_folder.mkdir(exist_ok=True, parents=True)
         
         self._load_playlist()
-        
-        # Устанавливаем обработчик окончания трека
-        event_manager = self.player.event_manager()
-        event_manager.event_attach(vlc.EventType.MediaPlayerEndReached, self._on_track_end)
-    
-    def _on_track_end(self, event):
-        """Обработчик окончания трека"""
-        if self.is_playing:
-            self.next_track()
     
     def _load_playlist(self):
         """Загружает список музыкальных файлов из папки"""
         supported_formats = {'.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma'}
-        self.original_playlist = []
+        self.playlist = []
         
         if self.music_folder.exists() and self.music_folder.is_dir():
             for file in self.music_folder.iterdir():
                 if file.suffix.lower() in supported_formats and file.is_file():
-                    self.original_playlist.append(str(file.absolute()))
-        
-        # Сортируем оригинальный плейлист для consistency
-        self.original_playlist.sort()
-        
-        # Копируем оригинальный плейлист в рабочий
-        self.playlist = self.original_playlist.copy()
-        self.shuffle_mapping = list(range(len(self.playlist)))
-    
-    def shuffle_playlist(self):
-        """Перемешивает плейлист с сохранением mapping"""
-        if not self.playlist:
-            return False
-        
-        # Создаем mapping: оригинальный индекс -> перемешанный индекс
-        original_indices = list(range(len(self.original_playlist)))
-        random.shuffle(original_indices)
-        
-        # Создаем новый перемешанный плейлист
-        shuffled_playlist = []
-        for orig_idx in original_indices:
-            shuffled_playlist.append(self.original_playlist[orig_idx])
-        
-        # Обновляем текущий индекс если трек играет
-        current_track_path = None
-        if self.current_track_index >= 0:
-            current_track_path = self.playlist[self.current_track_index]
-        
-        self.playlist = shuffled_playlist
-        self.is_shuffled = True
-        self.shuffle_mapping = original_indices  # Сохраняем mapping
-        
-        # Находим новый индекс текущего трека
-        if current_track_path:
-            try:
-                self.current_track_index = self.playlist.index(current_track_path)
-            except ValueError:
-                self.current_track_index = -1
-        else:
-            self.current_track_index = -1
-        
-        return True
-    
-    def unshuffle_playlist(self):
-        """Возвращает оригинальный порядок плейлиста"""
-        if not self.playlist:
-            return False
-        
-        # Сохраняем текущий трек если он играет
-        current_track_path = None
-        if self.current_track_index >= 0:
-            current_track_path = self.playlist[self.current_track_index]
-        
-        # Восстанавливаем оригинальный порядок
-        self.playlist = self.original_playlist.copy()
-        self.is_shuffled = False
-        self.shuffle_mapping = list(range(len(self.playlist)))
-        
-        # Обновляем индекс текущего трека если он был
-        if current_track_path:
-            try:
-                self.current_track_index = self.playlist.index(current_track_path)
-            except ValueError:
-                self.current_track_index = -1
-        else:
-            self.current_track_index = -1
-        
-        return True
-    
-    def next_track(self) -> bool:
-        """Следующий трек"""
-        if not self.playlist:
-            return False
-        
-        next_index = (self.current_track_index + 1) % len(self.playlist)
-        return self.play(next_index)
-    
-    def previous_track(self) -> bool:
-        """Предыдущий трек"""
-        if not self.playlist:
-            return False
-        
-        prev_index = (self.current_track_index - 1) % len(self.playlist)
-        return self.play(prev_index)
-    
-    def play(self, track_index: int = None) -> bool:
-        """Воспроизведение трека"""
-        if not self.playlist:
-            return False
-        
-        if track_index is None:
-            if self.current_track_index == -1:
-                track_index = 0
-            else:
-                track_index = self.current_track_index
-        else:
-            if track_index < 0 or track_index >= len(self.playlist):
-                return False
-        
-        try:
-            # Останавливаем текущее воспроизведение
-            self.player.stop()
-            
-            media = self.instance.media_new(self.playlist[track_index])
-            self.player.set_media(media)
-            self.player.play()
-            self.current_track_index = track_index
-            self.is_playing = True
-            
-            track_name = Path(self.playlist[track_index]).name
-            readable_name = self.get_readable_track_name(track_name)
-            return True
-        except Exception as e:
-            return False
+                    self.playlist.append(str(file.absolute()))
     
     def latin_to_cyrillic(self, text: str) -> str:
         """Преобразует латинские символы в кириллические для озвучивания"""
@@ -247,10 +123,10 @@ class MusicPlayer:
                 track_index = self.current_track_index
         else:
             if track_index < 0 or track_index >= len(self.playlist):
-                print(f"Неверный индекс трека: {track_index}")
                 return False
         
         try:
+            self.stop()
             media = self.instance.media_new(self.playlist[track_index])
             self.player.set_media(media)
             self.player.play()
@@ -270,7 +146,6 @@ class MusicPlayer:
         if self.player.get_media():
             self.player.pause()
             self.is_playing = not self.is_playing
-            print("Пауза" if not self.is_playing else "Возобновление")
             return True
         return False
     
@@ -279,9 +154,20 @@ class MusicPlayer:
         if self.player.get_media():
             self.player.stop()
             self.is_playing = False
-            print("Воспроизведение остановлено")
             return True
         return False
+    
+    def shuffle_playlist(self):
+        """Перемешивает плейлист"""
+        random.shuffle(self.playlist)
+        self.is_shuffled = True
+        self.play(0)
+    
+    def unshuffle_playlist(self):
+        """Возвращает оригинальный порядок плейлиста"""
+        self._load_playlist()
+        self.is_shuffled = False
+        self.play(0)
     
     def next_track(self) -> bool:
         """Следующий трек"""
@@ -289,7 +175,6 @@ class MusicPlayer:
             return False
         
         next_index = (self.current_track_index + 1) % len(self.playlist)
-        self.stop()
         return self.play(next_index)
     
     def previous_track(self) -> bool:
@@ -298,7 +183,6 @@ class MusicPlayer:
             return False
         
         prev_index = (self.current_track_index - 1) % len(self.playlist)
-        self.stop()
         return self.play(prev_index)
     
     def set_volume(self, volume: int) -> bool:
@@ -337,7 +221,7 @@ class MusicPlayer:
 def start(core: VACore):
     manifest = {
         "name": "Музыкальный плеер VLC",
-        "version": "1.2",
+        "version": "1.3",
         "require_online": False,
         "description": "Управление локальной музыкой через VLC player. "
                        "Воспроизведение, пауза, переключение треков, регулировка громкости, перемешивание.",
@@ -384,8 +268,6 @@ def init_music_player(core: VACore):
         except ValueError:
             core.music_player.set_volume(50)
         
-        print("Музыкальный плеер инициализирован")
-
 def start_music(core: VACore, phrase: str):
     """Запуск музыки"""
     init_music_player(core)
