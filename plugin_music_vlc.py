@@ -24,6 +24,8 @@ class MusicPlayer:
         self.volume: int = 50
         self.is_shuffled: bool = False
         self.player.audio_set_volume(self.volume)
+        self.event_manager = self.player.event_manager()
+        self.event_manager.event_attach(vlc.EventType.MediaPlayerEndReached, self.next_track)
         
         # Создаем папку для музыки если её нет
         self.music_folder.mkdir(exist_ok=True, parents=True)
@@ -126,7 +128,7 @@ class MusicPlayer:
                 return False
         
         try:
-            self.stop()
+            self.player.stop()
             media = self.instance.media_new(self.playlist[track_index])
             self.player.set_media(media)
             self.player.play()
@@ -161,13 +163,11 @@ class MusicPlayer:
         """Перемешивает плейлист"""
         random.shuffle(self.playlist)
         self.is_shuffled = True
-        self.play(0)
     
     def unshuffle_playlist(self):
         """Возвращает оригинальный порядок плейлиста"""
         self._load_playlist()
         self.is_shuffled = False
-        self.play(0)
     
     def next_track(self) -> bool:
         """Следующий трек"""
@@ -366,12 +366,9 @@ def shuffle_music(core: VACore, phrase: str):
         core.play_voice_assistant_speech("Музыкальный плеер не инициализирован")
         return
     
-    success = core.music_player.shuffle_playlist()
-    if success:
-        core.play_voice_assistant_speech("Плейлист перемешан. Включаю первый трек.")
-        core.music_player.play(0)  # Запускаем первый трек в перемешанном плейлисте
-    else:
-        core.play_voice_assistant_speech("Не удалось перемешать плейлист")
+    core.music_player.shuffle_playlist()
+    core.play_voice_assistant_speech("Плейлист перемешан. Включаю первый трек.")
+    core.music_player.play(0)  # Запускаем первый трек в перемешанном плейлисте
 
 def unshuffle_music(core: VACore, phrase: str):
     """Возврат к обычному порядку"""
@@ -382,5 +379,6 @@ def unshuffle_music(core: VACore, phrase: str):
     success = core.music_player.unshuffle_playlist()
     if success:
         core.play_voice_assistant_speech("Порядок плейлиста восстановлен")
+        core.music_player.play(0)
     else:
         core.play_voice_assistant_speech("Не удалось восстановить порядок плейлиста")
