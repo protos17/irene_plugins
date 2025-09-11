@@ -25,7 +25,7 @@ class MusicPlayer:
         self.is_shuffled: bool = False
         self.player.audio_set_volume(self.volume)
         self.event_manager = self.player.event_manager()
-        self.event_manager.event_attach(vlc.EventType.MediaPlayerEndReached, self.next_track)
+        self.event_manager.event_attach(vlc.EventType.MediaPlayerEndReached, self.event_callback)
         
         # Создаем папку для музыки если её нет
         self.music_folder.mkdir(exist_ok=True, parents=True)
@@ -168,6 +168,9 @@ class MusicPlayer:
         """Возвращает оригинальный порядок плейлиста"""
         self._load_playlist()
         self.is_shuffled = False
+        
+    def event_callback(self, event=None):
+        self.next_track()
     
     def next_track(self) -> bool:
         """Следующий трек"""
