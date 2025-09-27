@@ -51,10 +51,10 @@ def start(core:VACore):
             "потом выключи|спать": (RadioTimerSleep),
          }
     }
-    init_light(core)
     return manifest
 
 def start_with_options(core:VACore, manifest:dict):
+    init_light(core)
     pass
     
 def RadioPlay(core:VACore, phrase: str): # в phrase находится остаток фразы после названия скилла,
@@ -64,6 +64,8 @@ def RadioPlay(core:VACore, phrase: str): # в phrase находится оста
     global player
     core.play_voice_assistant_speech("включаю")
     player.volume = options["radioVolume"]
+    if options["is_need_light"]:
+        think_light(core)
     if "коммерсант" in phrase:
         options["radioPlay"] = next((i for i, item in enumerate(options["radioStations"]) if "kommersant" in item), None)
     if "наш" in phrase:
@@ -80,8 +82,6 @@ def RadioPlay(core:VACore, phrase: str): # в phrase находится оста
         options["radioPlay"] = next((i for i, item in enumerate(options["radioStations"]) if "choco" in item), None)
     core.save_plugin_options(modname,options)
     player.play(options["radioStations"][options["radioPlay"]])
-    if options["is_need_light"]:
-        think_light(core)
     while player.volume <= options["radioVolume"]:
         player.volume +=1
         time.sleep(0.1)
