@@ -10,6 +10,7 @@ from pixel_ring import pixel_ring
 from gpiozero import LED
 from pathlib import Path
 from vacore import VACore
+from urllib.parse import unquote
 
 modname = os.path.basename(__file__)[:-3]
 
@@ -194,9 +195,8 @@ class MusicPlayer:
     
     def get_current_track(self) -> str:
         """Получить название текущего трека"""
-        if self.current_track_index >= 0 and self.current_track_index < len(self.playlist):
-            return Path(self.playlist[self.current_track_index]).name
-        return ""
+        mrl = self.player.get_media().get_mrl()
+        return os.path.splitext(os.path.basename(unquote(mrl.replace('file://', ''))))[0]
     
     def get_readable_current_track(self) -> str:
         """Получить читаемое название текущего трека"""
