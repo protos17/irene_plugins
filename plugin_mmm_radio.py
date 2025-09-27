@@ -40,14 +40,14 @@ def start(core:VACore):
         "commands": { # набор скиллов. Фразы скилла разделены | . Если найдены - вызывается функция
             "радио|включи радио": RadioPlay, 
             "поменяй радио|другое радио|смени радио": RadioChange,
-            "тихо|выключи радио|стоп": RadioStop,
-            "пауза|паузу": RadioPause,
-            "тише": (RadioVolumeChange, -15),
-            "громче": (RadioVolumeChange, 15),
-            "чуть тише": (RadioVolumeChange, -5),
-            "чуть громче": (RadioVolumeChange, 5),
-            "сильно тише": (RadioVolumeChange, -35),
-            "сильно громче": (RadioVolumeChange, 35),
+            "выключи радио|радио стоп": RadioStop,
+            "радио пауза| радио на паузу": RadioPause,
+            "радио тише": (RadioVolumeChange, -15),
+            "радио громче": (RadioVolumeChange, 15),
+            "радио чуть тише": (RadioVolumeChange, -5),
+            "радио чуть громче": (RadioVolumeChange, 5),
+            "радио сильно тише": (RadioVolumeChange, -35),
+            "радио сильно громче": (RadioVolumeChange, 35),
             "потом выключи|спать": (RadioTimerSleep),
          }
     }
@@ -202,7 +202,7 @@ def RadioTimerSleep(core:VACore, phrase: str):
     core.set_timer(options["TimeSleep"],(RadioStop, phrase))
 
 def init_light(core: VACore):
-    core.power = LED(5)
+    core.power = LED(6)
     core.power.on()
     pixel_ring.set_brightness(20)
     pixel_ring.change_pattern('echo')
