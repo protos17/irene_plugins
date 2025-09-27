@@ -290,13 +290,13 @@ def start_music(core: VACore, phrase: str):
     init_music_player(core)
     
     success = core.music_player.play()
+    if core.plugin_options(modname)["is_need_light"]:
+        core.music_player.wakeup_light()
     if success:
         track_name = core.music_player.get_readable_current_track()
         core.play_voice_assistant_speech(f"Включаю {track_name}")
     else:
         core.play_voice_assistant_speech("Не удалось воспроизвести музыку. Проверьте папку с музыкой.")
-    if core.plugin_options(modname)["is_need_light"]:
-        core.music_player.wakeup_light()
 
 def pause_music(core: VACore, phrase: str):
     """Пауза/возобновление музыки"""
@@ -305,11 +305,11 @@ def pause_music(core: VACore, phrase: str):
         return
     
     success = core.music_player.pause()
+    if core.plugin_options(modname)["is_need_light"]:
+        core.music_player.think_light()
     if success:
         status = "паузу" if not core.music_player.is_playing else "воспроизведение"
         core.play_voice_assistant_speech(f"Ставлю на {status}")
-    if core.plugin_options(modname)["is_need_light"]:
-        core.music_player.think_light()
 
 def stop_music(core: VACore, phrase: str):
     """Остановка музыки"""
@@ -319,8 +319,7 @@ def stop_music(core: VACore, phrase: str):
     
     success = core.music_player.stop()
     if success:
-        status = "стоп"
-        core.play_voice_assistant_speech(f"Ставлю на {status}")
+        core.play_voice_assistant_speech("Выключаю")
     if core.plugin_options(modname)["is_need_light"]:
         core.music_player.stop_light()
 
@@ -329,24 +328,24 @@ def next_track(core: VACore, phrase: str):
     if not hasattr(core, 'music_player'):
         core.play_voice_assistant_speech("Музыкальный плеер не инициализирован")
         return
-    
+
     core.music_player.next_track()
-    track_name = core.music_player.get_readable_current_track()
-    core.play_voice_assistant_speech(f"Следующий трек: {track_name}")
     if core.plugin_options(modname)["is_need_light"]:
         core.music_player.speak_light()
+    track_name = core.music_player.get_readable_current_track()
+    core.play_voice_assistant_speech(f"Следующий трек: {track_name}")
 
 def previous_track(core: VACore, phrase: str):
     """Предыдущий трек"""
     if not hasattr(core, 'music_player'):
         core.play_voice_assistant_speech("Музыкальный плеер не инициализирован")
         return
-    
+
     core.music_player.previous_track()
-    track_name = core.music_player.get_readable_current_track()
-    core.play_voice_assistant_speech(f"Предыдущий трек: {track_name}")
     if core.plugin_options(modname)["is_need_light"]:
         core.music_player.speak_light()
+    track_name = core.music_player.get_readable_current_track()
+    core.play_voice_assistant_speech(f"Предыдущий трек: {track_name}")
 
 def volume_up(core: VACore, phrase: str):
     """Увеличение громкости"""
@@ -355,10 +354,10 @@ def volume_up(core: VACore, phrase: str):
         return
     
     success = core.music_player.volume_up()
-    if success:
-        core.play_voice_assistant_speech(f"Громкость увеличена до {core.music_player.volume}%")
     if core.plugin_options(modname)["is_need_light"]:
         core.music_player.think_light()
+    if success:
+        core.play_voice_assistant_speech(f"Громкость увеличена до {core.music_player.volume}%")
 
 def volume_down(core: VACore, phrase: str):
     """Уменьшение громкости"""
@@ -367,10 +366,10 @@ def volume_down(core: VACore, phrase: str):
         return
     
     success = core.music_player.volume_down()
-    if success:
-        core.play_voice_assistant_speech(f"Громкость уменьшена до {core.music_player.volume}%")
     if core.plugin_options(modname)["is_need_light"]:
         core.music_player.think_light()
+    if success:
+        core.play_voice_assistant_speech(f"Громкость уменьшена до {core.music_player.volume}%")
 
 def music_status(core: VACore, phrase: str):
     """Статус воспроизведения"""
@@ -395,10 +394,10 @@ def shuffle_music(core: VACore, phrase: str):
         return
     
     core.music_player.shuffle_playlist()
-    core.play_voice_assistant_speech("Плейлист перемешан. Включаю первый трек.")
-    core.music_player.play(0)  # Запускаем первый трек в перемешанном плейлисте
     if core.plugin_options(modname)["is_need_light"]:
         core.music_player.think_light()
+    core.play_voice_assistant_speech("Плейлист перемешан. Включаю первый трек.")
+    core.music_player.play(0)  # Запускаем первый трек в перемешанном плейлисте
 
 def unshuffle_music(core: VACore, phrase: str):
     """Возврат к обычному порядку"""
@@ -407,7 +406,7 @@ def unshuffle_music(core: VACore, phrase: str):
         return
     
     core.music_player.unshuffle_playlist()
-    core.play_voice_assistant_speech("Порядок плейлиста восстановлен")
-    core.music_player.play(0)
     if core.plugin_options(modname)["is_need_light"]:
         core.music_player.think_light()
+    core.play_voice_assistant_speech("Порядок плейлиста восстановлен")
+    core.music_player.play(0)
