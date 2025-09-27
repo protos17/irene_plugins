@@ -111,7 +111,6 @@ def RadioContext(core:VACore, phrase: str): # в phrase находится ос�
                                               # в этом плагине не используется
     # выходим из контекста
     if phrase in ("хорошо", "оставь", "стать", "оставить"):
-        core.context_clear_play()
         core.context_clear()
         return
         
@@ -151,7 +150,6 @@ def RadioStop(core:VACore, phrase: str): # в phrase находится оста
 
     if player.filename:
         player.stop()
-        if not TimerSleep: core.context_clear_play()
         core.context_clear()
     else:
         if not TimerSleep: core.play_voice_assistant_speech("было выключено")
