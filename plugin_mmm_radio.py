@@ -1,14 +1,13 @@
 # Подредактированный плагин управления радио по названию на основе https://github.com/Mmm-Vvv/Romeo_plugins
 # author: protos17
 
+import mpv
 import os
 import time
-
-
+from pixel_ring import pixel_ring
+from gpiozero import LED
 from vacore import VACore
-# from python_mpv_jsonipc import MPV
 
-import mpv
 player = mpv.MPV()
 lastRadioVolumeChange = 15
 modname = os.path.basename(__file__)[:-3] # calculating modname
@@ -19,7 +18,7 @@ TimerSleep = False
 def start(core:VACore):
     manifest = { # возвращаем настройки плагина - словарь
         "name": "MMM_Radio", # имя
-        "version": "1.1", # версия
+        "version": "1.2", # версия
         "require_online": True, # требует ли онлайн?
         "default_options": {
             "radioStations": [
@@ -35,6 +34,7 @@ def start(core:VACore):
             "radioVolume": 100,
             "TimeSleep": 1800,  # по команде "Спать": через сколько секунд выключить радио.
             "TimesToReduce": 2, # по команде "Спать": во сколько раз уменьшить громкость, 1 - не уменьшать. 
+            "is_need_light" : False, # Нужно ли мигание лампочек (при использовании respeaker в качестве микрофона)
         },
 
         "commands": { # набор скиллов. Фразы скилла разделены | . Если найдены - вызывается функция
@@ -51,6 +51,7 @@ def start(core:VACore):
             "потом выключи|спать": (RadioTimerSleep),
          }
     }
+    init_light(core)
     return manifest
 
 def start_with_options(core:VACore, manifest:dict):
@@ -79,12 +80,14 @@ def RadioPlay(core:VACore, phrase: str): # в phrase находится оста
         options["radioPlay"] = next((i for i, item in enumerate(options["radioStations"]) if "choco" in item), None)
     core.save_plugin_options(modname,options)
     player.play(options["radioStations"][options["radioPlay"]])
+    if options["is_need_light"]:
+        think_light(core)
     while player.volume <= options["radioVolume"]:
         player.volume +=1
         time.sleep(0.1)
 
     # ----------- set context ------
-    #core.context_set(RadioContext)
+    core.context_set(RadioContext)
  
 def RadioChange(core:VACore, phrase: str): # в phrase находится остаток фразы после названия скилла,
                                               # если юзер сказал больше
@@ -98,16 +101,17 @@ def RadioChange(core:VACore, phrase: str): # в phrase находится ост
     options["radioPlay"] = (options["radioPlay"] + 1) % len(options["radioStations"])
     core.save_plugin_options(modname,options)
     player.play(options["radioStations"][options["radioPlay"]])
-
+    if options["is_need_light"]:
+        think_light(core)
     # ----------- set context ------
-    #core.context_set(RadioContext)
+    core.context_set(RadioContext)
 
 def RadioContext(core:VACore, phrase: str): # в phrase находится остаток фразы после названия скилла,
                                               # если юзер сказал больше
                                               # в этом плагине не используется
     # выходим из контекста
     if phrase in ("хорошо", "оставь", "стать", "оставить"):
-        #core.context_clear_play()
+        core.context_clear_play()
         core.context_clear()
         return
         
@@ -123,15 +127,18 @@ def RadioContext(core:VACore, phrase: str): # в phrase находится ос�
     elif phrase=="сильно тише": RadioVolumeChange(core, phrase, -35)
     elif phrase=="сильно громче": RadioVolumeChange(core, phrase, 35)
     elif phrase in ("потом выключи", "спать"): RadioTimerSleep(core, phrase)
-    elif phrase=="ещё": 
-        #core.accept() 
+    elif phrase=="ещё":
+        core.accept()
         global lastRadioVolumeChange
         RadioVolumeChange(core, phrase, lastRadioVolumeChange)
    
     else: core.play_voice_assistant_speech("не разобрала. Что сделать с рАдио?")
+    options = core.plugin_options(modname)
+    if options["is_need_light"]:
+        think_light(core)
 
     # ----------- set context ------
-    #core.context_set(RadioContext)
+    core.context_set(RadioContext)
 
 def RadioStop(core:VACore, phrase: str): # в phrase находится остаток фразы после названия скилла,
     global player
@@ -145,20 +152,25 @@ def RadioStop(core:VACore, phrase: str): # в phrase находится оста
     if player.filename:
         player.stop()
         if not TimerSleep: core.context_clear_play()
-        #core.context_clear()
+        core.context_clear()
     else:
         if not TimerSleep: core.play_voice_assistant_speech("было выключено")
+    options = core.plugin_options(modname)
+    if options["is_need_light"]:
+        stop_light(core)
 
     # ----------- clear context ------
-    #core.context_clear()
+    core.context_clear()
     if TimerSleep: TimerSleep=False
         
 def RadioPause(core:VACore, phrase: str):
     global player
     player.pause = not player.pause
-
+    options = core.plugin_options(modname)
+    if options["is_need_light"]:
+        think_light(core)
     # ----------- set context ------
-    # core.context_set(RadioContext)
+    core.context_set(RadioContext)
     
 def RadioVolumeChange(core:VACore, phrase: str, level:int):
     global player
@@ -176,12 +188,13 @@ def RadioVolumeChange(core:VACore, phrase: str, level:int):
     options = core.plugin_options(modname)
     options["radioVolume"]=player.volume
     core.save_plugin_options(modname,options)
+    if options["is_need_light"]:
+        think_light(core)
     
     # ----------- set context ------
-    # core.context_set(RadioContext)
+    core.context_set(RadioContext)
     
 def RadioTimerSleep(core:VACore, phrase: str):
-    # print("Выключить радио через options["TimeSleep"] секунд")
     global player
     global TimerSleep
     options = core.plugin_options(modname)
@@ -189,3 +202,20 @@ def RadioTimerSleep(core:VACore, phrase: str):
     player.volume = player.volume//options["TimesToReduce"]
     core.play_voice_assistant_speech("выключу радио попозже")
     core.set_timer(options["TimeSleep"],(RadioStop, phrase))
+
+def init_light(core: VACore):
+    core.power = LED(5)
+    core.power.on()
+    pixel_ring.set_brightness(20)
+    pixel_ring.change_pattern('echo')
+    time.sleep(1)
+    pixel_ring.off()
+
+def think_light(core: VACore):
+    pixel_ring.think()
+    time.sleep(1)
+    pixel_ring.off()
+        
+def stop_light(core: VACore):
+    pixel_ring.off()
+    core.power.off()
